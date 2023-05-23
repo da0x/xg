@@ -1,4 +1,827 @@
 //
+//  x_block_measure.hpp
+//  x
+//
+//  Created by Daher Alfawares on 1/26/18.
+//  Copyright © 2018 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_block_measure_hpp
+#define x_block_measure_hpp
+
+#include <iostream>
+#include <ctime>
+#include <chrono>
+
+namespace x {
+    namespace block {
+        class measure {
+            const char* block_name;
+            std::chrono::high_resolution_clock::time_point start;
+        public:
+            measure(const char* block_name){
+                this->block_name = block_name;
+                this->start = std::chrono::high_resolution_clock::now();
+            }
+            ~measure(){
+                auto end = std::chrono::high_resolution_clock::now();
+                
+                std::cout << "block execution: " << this->block_name << "(" << std::chrono::duration<double, std::milli>(end-start).count()
+                << " ms)" << std::endl;
+            }
+        };
+    }
+}
+
+#endif /* x_block_measure_hpp */
+//
+//  x_clamp.hpp
+//  x
+//
+//  Created by Daher Alfawares on 1/26/18.
+//  Copyright � 2018 Daher Alfawares. All rights reserved.
+//
+
+#pragma once
+
+namespace x
+{
+	template<typename _T> const _T& clamp(const _T& value, const _T& min, const _T& max)
+	{
+		if (value > max) return max;
+		if (value < min) return min;
+		return value;
+	}
+}
+
+//
+//  x.cpp
+//  x
+//
+//  Created by Daher Alfawares on 6/2/19.
+//  Copyright � 2019 Daher Alfawares. All rights reserved.
+//
+
+#pragma once
+
+namespace x
+	{
+	class fixed_float {
+		const float & f;
+		const int p;
+	public:
+		fixed_float(const float& floatValue, const int precision = 2) :
+			f(floatValue), p(precision) {}
+		const float& value() const { return f; }
+		const int& precision() const { return p; }
+		};
+	}
+
+#include <iomanip>
+
+inline
+std::ostream& operator << (std::ostream& stream, const x::fixed_float& f)
+	{
+	return stream << std::fixed << std::setprecision(f.precision()) << f.value();
+	}
+
+//
+//  x_options.hpp
+//  x
+//
+//  Created by Daher Alfawares on 8/28/17.
+//  Copyright © 2017 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_options_hpp
+#define x_options_hpp
+
+/* : Example :
+ #include <iostream>
+ #include "xg.hpp"
+ namespace arg {
+     std::string help = "-help";
+      std::string name = "-name";
+      std::string x = "-x";
+ }
+ int main(int argc, const char * argv[]) {
+      auto arguments = x::options(argc,argv);
+      arguments.map_to({
+           {arg::help,    x::option("produces the usage of this tool.")},
+           {arg::name,    x::option("takes your first and last names.")}
+      });
+      if(arguments[arg::help]){
+           std::cout << arguments.print() << std::endl;
+      }
+      if(arguments[arg::name]){
+           std::cout<< arguments[arg::name].value() << std::endl;
+      }
+      return 0;
+ }
+ */
+
+#include <string>
+#include <vector>
+#include <map>
+
+namespace x {
+    
+    class option {
+    public:
+        typedef std::string             string;
+        typedef std::vector<string>     vector;
+        typedef std::map<string,option> map;
+        
+    public:
+        option(string description){
+            option_description = description;
+            option_is_enabled  = false;
+        }
+        void operator +=(const string& value){
+            this->option_values.push_back(value);
+        }
+        const vector values() const { return this->option_values; }
+        const string value() const {
+            if(this->option_values.size()>0)
+                return this->option_values[0];
+            else
+                return string();
+        }
+        void enable(){ option_is_enabled = true; }
+        bool enabled(){ return option_is_enabled; }
+        std::string description(){ return option_description; }
+        operator bool () { return enabled(); }
+        
+    private:
+        string option_description;
+        vector option_values;
+        bool   option_is_enabled;
+    };
+    
+    class options {
+    public:
+        option::map     map;
+        option::vector  arguments;
+
+        options(int argc, const char * argv[]);
+        void map_to(option::map map);
+        std::string print();
+        std::string print_values();
+        
+        inline
+        option& operator[](option::string key){
+            auto iterator = map.find(key);
+            if(iterator != map.end()){
+                return iterator->second;
+            }
+            
+            throw -1; // You forgot to add a switch to the map.
+        }
+    };
+}
+
+#endif /* x_options_hpp */
+//
+//  x_parallel.hpp
+//  life
+//
+//  Created by Daher Alfawares on 1/26/18.
+//  Copyright © 2018 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_parallel_hpp
+#define x_parallel_hpp
+
+#include <vector>
+#include <thread>
+
+namespace x {
+    template<typename function>
+    class parallel {
+        typedef std::thread thread;
+        typedef std::vector<thread> vector;
+        vector threads;
+        
+        parallel(std::vector<function> functions){
+            for(auto f: functions){
+                threads.push_back(thread(f));
+            }
+        }
+        ~parallel(){
+            for(auto t: threads){
+                t.join();
+            }
+        }
+    };
+}
+
+
+#endif /* x_parallel_hpp */
+//
+//  x_probability.hpp
+//  x
+//
+//  Created by Daher Alfawares on 1/26/18.
+//  Copyright © 2018 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_probability_hpp
+#define x_probability_hpp
+
+#include <vector>
+
+namespace x {
+    class probability {
+        float normal;
+    public:
+        probability()
+        {
+            this->normal = 0;
+        }
+        probability(float normal)
+        {
+            this->normal = normal;
+        }
+        operator bool() const {
+            float random = std::rand() / static_cast<float>(RAND_MAX);
+            return random <= this->normal;
+        }
+        probability& operator = (float value){
+            normal = value;
+            return *this;
+        }
+        float value() const {
+            return normal;
+        }
+    };
+}
+
+#include <ostream>
+inline
+std::ostream & operator << (std::ostream& stream, const x::probability& probability){
+    return stream << probability.value();
+}
+
+            
+#endif /* x_probability_hpp */
+//
+//  x_process.hpp
+//  x
+//
+//  Created by Daher Alfawares on 8/29/17.
+//  Copyright © 2017 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_process_hpp
+#define x_process_hpp
+
+#include <string>
+#include <sstream>
+#include <vector>
+
+namespace x {
+    class process {
+        std::string process_name;
+    public:
+        process(std::string process):process_name(process) {}
+        std::string  run(const std::string& args) const;
+        std::string output();
+    private:
+        std::stringstream out;
+    };
+}
+
+#endif /* x_process_hpp */
+//
+//  x_shell.hpp
+//  x
+//
+//  Created by Daher Alfawares on 12/13/17.
+//  Copyright © 2017 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_shell_hpp
+#define x_shell_hpp
+
+#include <string>
+#include <iostream>
+#include <sstream>
+
+namespace x {
+    namespace shell {
+        
+        using std::string;
+        
+        inline string remove(string file){
+            std::stringstream command;
+            command
+            << "rm "
+            << "-f "
+            << "-r "
+            << "-v "
+            << "\"" << file << "\" ";
+            return command.str();
+        }
+        inline string mkdir(string dir){
+            std::stringstream command;
+            command
+            << "mkdir "
+            << "\"" << dir << "\" ";
+            return command.str();
+        }
+        inline string copy(string src, string dst){
+            std::stringstream command;
+            command
+            << "cp "    // copy
+            << "-f "    // force
+            << "-r "    // recursive
+            << "-v "    // verbose
+            << "\"" << src << "\" "
+            << "\"" << dst << "\" ";
+            
+          //  std::cout << command.str() << std::endl;
+            return command.str();
+        }
+        
+        inline string diff(string src, string dst){
+            std::stringstream command;
+            command
+            << "diff " // diff
+            << "-q "   // quiet
+            << "\"" << src << "\" "
+            << "\"" << dst << "\" ";
+          //  std::cout << command.str() << std::endl;
+            return command.str();
+        }
+        inline string move(string src, string dst){
+            std::stringstream command;
+            command
+            << "mv "
+            << "-f "
+            << "-v "
+            << "\"" << src << "\" "
+            << "\"" << dst << "\" ";
+            return command.str();
+           // std::cout << command.str() << std::endl;
+        }
+    }
+}
+
+#endif /* x_shell_hpp */
+//
+//  x_sort.hpp
+//  x
+//
+//  Created by Daher Alfawares on 2/3/18.
+//  Copyright © 2018 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_sort_hpp
+#define x_sort_hpp
+
+namespace x { namespace sort {
+    
+    template<typename functor>
+    struct by
+    {
+        functor f;
+        template<class T>
+        bool operator()(T const &a, T const &b) const {
+            return f(a) > f(b);
+        }
+    };
+    
+}}
+
+#endif /* x_sort_hpp */
+//
+//  stdlib.hpp
+//  x
+//
+//  Created by Daher Alfawares on 1/26/18.
+//  Copyright © 2018 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_stdlib_hpp
+#define x_stdlib_hpp
+
+#include <cstdlib>
+
+namespace x {
+
+    template<typename T> T abs(const T& t){
+        return t < 0 ? -t : t;
+    }
+    
+    template<typename T> T rand(){
+        return std::rand() / static_cast<T>(RAND_MAX);
+    }
+    
+}
+
+#endif /* x_stdlib_hpp */
+
+//C++
+//////////////////////////////////////////////////////////////////////////////
+//                                                                          //
+//  Filename     : x_table.hpp                                          //
+//  Created by   : Daher Alfawares                                          //
+//  Created Date : 06/20/2009                                               //
+//  License      : Apache License 2.0                                       //
+//                                                                          //
+// Copyright 2009 Daher Alfawares                                           //
+//                                                                          //
+// Licensed under the Apache License, Version 2.0 (the "License");          //
+// you may not use this file except in compliance with the License.         //
+// You may obtain a copy of the License at                                  //
+//                                                                          //
+// http://www.apache.org/licenses/LICENSE-2.0                               //
+//                                                                          //
+// Unless required by applicable law or agreed to in writing, software      //
+// distributed under the License is distributed on an "AS IS" BASIS,        //
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. //
+// See the License for the specific language governing permissions and      //
+// limitations under the License.                                           //
+//                                                                          //
+//////////////////////////////////////////////////////////////////////////////
+
+/*
+ 
+ X Table is a C++ class that allows you to format your data in an ASCII dynamic table structure.
+ 
+ Example:
+ 
+ x::table myTable("Table Title");
+ myTable ("header 1")("header 2")++;
+ myTable ("value 11")("value 12")++;
+ myTable ("value 21")("value 22")++;
+ 
+ std::cout << myTable;
+ 
+ Output:
+ 
+ +---------------------+
+ |Table Title          |
+ +----------+----------+
+ | header 1 | header 2 |
+ +----------+----------+
+ | value 11 | value 12 |
+ | value 21 | value 22 |
+ +----------+----------+
+ 
+ */
+
+
+#ifndef _X_Table__0a61eabe_d038_4d30_a6fb_e202b2dfd6a9
+#define _X_Table__0a61eabe_d038_4d30_a6fb_e202b2dfd6a9
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <iomanip>
+#include <numeric>
+#include <sstream>
+
+namespace x
+{
+    // forward:
+    
+    // the following allows adding a C style string to an std::string and returns an std::string.
+    // example:
+    // std::string a = "abc";
+    // std::string b = "123" + a;
+    //
+    
+    inline std::string operator + ( const char*a, const std::string& b );
+    inline std::string itoa( const int &i );
+    inline int atoi( const std::string&s );
+    
+    // lexical cast.
+    template<typename _To, typename _From> class lexical_cast;
+    struct scoped_mute_s;
+    // formats the output.
+    std::size_t length( std::string _String);
+    std::string fill(std::string _Str, std::size_t _Size);
+    
+    class endl {};
+
+    class table
+    {
+    public:
+        std::string					title;
+        size_t						column;
+        std::vector<std::string>	columns;
+        std::vector<std::size_t>	column_widths;
+        std::string					comment;
+        std::string					Prefix; // line prefix.
+        
+        table( std::string t ):title(t),column(0){}
+        
+        
+        std::vector< std::vector<std::string> > rows;
+        
+        table & operator<<(std::string t){
+            return (*this)(t);
+        }
+        table & operator<<(int t){
+            std::stringstream fstr;
+            fstr << t;
+            return (*this)<< fstr.str();
+        }
+        table & operator()(std::string t)
+        {
+            if( column >= columns.size() )
+            {
+                columns.push_back("");
+                column_widths.push_back(0);
+            }
+            
+            columns[column] = t;
+            if( column_widths[column] < length(t) )
+                column_widths[column] = length(t);
+            
+            ++column;
+            
+            return *this;
+        }
+        table & operator()(int i)
+        {
+            return (*this)(itoa(i));
+        }
+        
+        void operator ++(int)
+        {
+            column = 0;
+            rows.push_back( columns );
+        }
+        
+        std::string prefix(){ return Prefix; }
+        void prefix( std::string _P ){ Prefix=_P; }
+        
+        std::string endl(){ return "\r\n" + prefix() + " "; }
+    };
+    
+    inline std::ostream& operator << ( std::ostream& _Str, table& T )
+    {
+        
+        int width = std::accumulate( T.column_widths.begin(), T.column_widths.end(), 0 );
+        width += 3*T.columns.size();
+        
+        _Str << std::setiosflags(std::ios::left);
+        
+        _Str << T.endl();
+        
+        // top border.
+//        _Str
+//        << ' ';
+//        for( int b=0; b< width-1; b++ )
+//            _Str
+//            << '-';
+//        _Str
+//        << ' '
+//        << T.endl();
+        
+        // title.
+        _Str
+        << "  "
+        << std::setw(width-1)
+        << T.title
+        << ""
+        << T.endl();
+        
+        // middle border
+        for( size_t i=0; i< T.columns.size(); i++ )
+            _Str
+            << "  "
+            << std::setw( static_cast<int>(T.column_widths[i]) )
+            << std::setfill('-')
+            << ""
+            << std::setfill(' ')
+            << " ";
+        _Str
+        << " "
+        << T.endl();
+        
+        
+        if( !T.rows.empty() || !T.rows[0].empty() )
+        {
+            size_t i=0,j=0;
+            
+            // first row as header.
+            for( i=0; i< T.columns.size(); i++ )
+            {
+                _Str
+                << "  "
+                << fill( T.rows[j][i], T.column_widths[i] )
+                << " ";
+            }
+            _Str
+            << " "
+            << T.endl();
+            
+            // middle border
+            for( size_t i=0; i< T.columns.size(); i++ )
+            {
+                _Str
+                << "  "
+                << std::setw( static_cast<int>(T.column_widths[i]) )
+                << std::setfill(' ')
+                << ""
+                << std::setfill(' ')
+                << " ";
+            }
+            _Str
+            << " "
+            << T.endl();
+            
+            // comment if available.
+            if( !T.comment.empty() )
+                _Str
+                << " "
+                << std::setw(width-1)
+                << T.comment
+                << " "
+                << T.endl();
+            
+            // full table.
+            for( size_t j=1; j< T.rows.size(); j++ )
+            {
+                for( size_t i=0; i< T.columns.size(); i++ )
+                {
+                    _Str
+                    << "  "
+                    << fill( T.rows[j][i], T.column_widths[i] )
+                    << " ";
+                }
+                _Str
+                << " "
+                << T.endl();
+            }
+        }
+        
+        // bottom border.
+        for( size_t i=0; i< T.columns.size(); i++ )
+        {
+            _Str
+            << "  "
+            << std::setw( static_cast<int>(T.column_widths[i]) )
+            << std::setfill('-')
+            << ""
+            << std::setfill(' ')
+            << " ";
+        }
+        _Str << std::resetiosflags(std::ios::left);
+        _Str
+        << " "
+        << std::endl;
+        
+        return _Str;
+    }
+    
+    inline std::string operator + ( const char*a, const std::string& b )
+    {
+        std::string c;
+        c += a;
+        c += b;
+        return c;
+    }
+    
+    inline std::string itoa( const int &i )
+    {
+        std::stringstream Str;
+        Str << i;
+        return Str.str();
+    }
+    
+    inline int atoi( const std::string&s )
+    {
+        int i;
+        std::istringstream Str(s);
+        Str >> i;
+        return i;
+    }
+    
+    // lexical cast.
+    template<typename _To, typename _From> class lexical_cast
+    {
+        _From * from;
+    public:
+        lexical_cast<_To, _From>( _From From )
+        {
+            this->from = & From;
+        }
+        
+        operator _To()
+        {
+            throw( "Bad lexical cast: " );
+        }
+    };
+    
+    inline
+    std::size_t length( std::string _String){
+        std::size_t length = 0;
+        //while (*s)
+        for(auto Char:_String)
+            length += (Char++ & 0xc0) != 0x80;
+        return length;
+    }
+    
+    inline
+    std::string fill(std::string _Str, std::size_t _Size){
+        
+        if( length(_Str) < _Size ){
+            std::size_t Difference = _Size - length(_Str);
+            std::stringstream _Out;
+            _Out << _Str;
+            for(std::size_t i=0; i< Difference; i++){
+                _Out << " ";
+            }
+            return _Out.str();
+        }
+        
+        return _Str;
+    }
+    
+} /* ascii */
+
+#endif
+//
+//  x_test_probability.hpp
+//  x
+//
+//  Created by Daher Alfawares on 1/26/18.
+//  Copyright © 2018 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_test_probability_hpp
+#define x_test_probability_hpp
+
+#include <iomanip>
+#include <vector>
+
+namespace x {
+namespace test {
+    inline void probability(){
+        x::block::measure m("x::test::probability");
+        std::vector<float> probabilities = {
+            0.1f, 0.25f, 0.5f, 0.75f, 1.0f
+        };
+        int iterations = 1000000;
+        std::cout << "testing probability for " << iterations << " iterations" << std::endl;
+        for(auto probability:probabilities){
+            float total = 0;
+            for(int iteration = 0; iteration < iterations; iteration++){
+                if(x::probability(probability)){
+                    total += 1;
+                }
+            }
+            auto result = total/static_cast<float>(iterations);
+            auto diff = result - probability;
+            if(diff<0) diff = -diff;
+            
+            std::cout
+            << "probability("
+            << std::fixed << std::setprecision(2) << probability
+            << ") -> "
+            << result
+            << std::endl;
+        }
+    }
+}}
+
+#endif
+
+//
+//  x_uuid.hpp
+//  x
+//
+//  Created by Daher Alfawares on 12/14/17.
+//  Copyright © 2017 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_uuid_hpp
+#define x_uuid_hpp
+
+#include <string>
+#include <sstream>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+
+namespace x {
+    namespace uuid {
+        inline std::string string(){
+            std::stringstream str;
+            boost::uuids::uuid u = boost::uuids::random_generator()();
+            str << u;
+            return str.str();
+        }
+    }
+}
+
+#endif
+
+//
 //  xg.hpp
 //  life
 //
@@ -25,7 +848,6 @@
 #include <iomanip>
 #include <exception>
 #include <glm/glm.hpp>
-#include "x_clamp.hpp"
 
 #ifdef main
 #undef main
@@ -159,28 +981,21 @@ namespace xg {
 		window(xg::vec2 dimensions)
 		{
 			// Settings
-			SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+            SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
 			SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
 			SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
 			SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
-
 			SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 32);
-
 			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
 			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 2);
-
 			SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
-
-
-			this->win = SDL_CreateWindow("life", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, int(dimensions.x), int(dimensions.y), SDL_RENDERER_ACCELERATED | /*SDL_WINDOW_FULLSCREEN |*/ SDL_WINDOW_ALLOW_HIGHDPI);
+			this->win = SDL_CreateWindow("xg", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, int(dimensions.x), int(dimensions.y), SDL_RENDERER_ACCELERATED | /*SDL_WINDOW_FULLSCREEN |*/ SDL_WINDOW_ALLOW_HIGHDPI);
 			if (win == nullptr)
 			{
 				std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
 				SDL_Quit();
 				return;
 			}
-
-
 			SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
 		}
 
@@ -551,6 +1366,10 @@ namespace xg {
 			auto total = std::accumulate(this->history.begin(), this->history.end(), 0.0f);
 			return int(std::ceilf(1000.0f * float(this->history.size()) / float(total)));
 		}
+        operator float() const
+        {
+            return time_gameplay;
+        }
 	};
 
 	class framerate
