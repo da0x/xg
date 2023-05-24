@@ -85,342 +85,6 @@ std::ostream& operator << (std::ostream& stream, const x::fixed_float& f)
 	return stream << std::fixed << std::setprecision(f.precision()) << f.value();
 	}
 
-//
-//  x_options.hpp
-//  x
-//
-//  Created by Daher Alfawares on 8/28/17.
-//  Copyright © 2017 Daher Alfawares. All rights reserved.
-//
-
-#ifndef x_options_hpp
-#define x_options_hpp
-
-/* : Example :
- #include <iostream>
- #include "xg.hpp"
- namespace arg {
-     std::string help = "-help";
-      std::string name = "-name";
-      std::string x = "-x";
- }
- int main(int argc, const char * argv[]) {
-      auto arguments = x::options(argc,argv);
-      arguments.map_to({
-           {arg::help,    x::option("produces the usage of this tool.")},
-           {arg::name,    x::option("takes your first and last names.")}
-      });
-      if(arguments[arg::help]){
-           std::cout << arguments.print() << std::endl;
-      }
-      if(arguments[arg::name]){
-           std::cout<< arguments[arg::name].value() << std::endl;
-      }
-      return 0;
- }
- */
-
-#include <string>
-#include <vector>
-#include <map>
-
-namespace x {
-    
-    class option {
-    public:
-        typedef std::string             string;
-        typedef std::vector<string>     vector;
-        typedef std::map<string,option> map;
-        
-    public:
-        option(string description){
-            option_description = description;
-            option_is_enabled  = false;
-        }
-        void operator +=(const string& value){
-            this->option_values.push_back(value);
-        }
-        const vector values() const { return this->option_values; }
-        const string value() const {
-            if(this->option_values.size()>0)
-                return this->option_values[0];
-            else
-                return string();
-        }
-        void enable(){ option_is_enabled = true; }
-        bool enabled(){ return option_is_enabled; }
-        std::string description(){ return option_description; }
-        operator bool () { return enabled(); }
-        
-    private:
-        string option_description;
-        vector option_values;
-        bool   option_is_enabled;
-    };
-    
-    class options {
-    public:
-        option::map     map;
-        option::vector  arguments;
-
-        options(int argc, const char * argv[]);
-        void map_to(option::map map);
-        std::string print();
-        std::string print_values();
-        
-        inline
-        option& operator[](option::string key){
-            auto iterator = map.find(key);
-            if(iterator != map.end()){
-                return iterator->second;
-            }
-            
-            throw -1; // You forgot to add a switch to the map.
-        }
-    };
-}
-
-#endif /* x_options_hpp */
-//
-//  x_parallel.hpp
-//  life
-//
-//  Created by Daher Alfawares on 1/26/18.
-//  Copyright © 2018 Daher Alfawares. All rights reserved.
-//
-
-#ifndef x_parallel_hpp
-#define x_parallel_hpp
-
-#include <vector>
-#include <thread>
-
-namespace x {
-    template<typename function>
-    class parallel {
-        typedef std::thread thread;
-        typedef std::vector<thread> vector;
-        vector threads;
-        
-        parallel(std::vector<function> functions){
-            for(auto f: functions){
-                threads.push_back(thread(f));
-            }
-        }
-        ~parallel(){
-            for(auto t: threads){
-                t.join();
-            }
-        }
-    };
-}
-
-
-#endif /* x_parallel_hpp */
-//
-//  x_probability.hpp
-//  x
-//
-//  Created by Daher Alfawares on 1/26/18.
-//  Copyright © 2018 Daher Alfawares. All rights reserved.
-//
-
-#ifndef x_probability_hpp
-#define x_probability_hpp
-
-#include <vector>
-
-namespace x {
-    class probability {
-        float normal;
-    public:
-        probability()
-        {
-            this->normal = 0;
-        }
-        probability(float normal)
-        {
-            this->normal = normal;
-        }
-        operator bool() const {
-            float random = std::rand() / static_cast<float>(RAND_MAX);
-            return random <= this->normal;
-        }
-        probability& operator = (float value){
-            normal = value;
-            return *this;
-        }
-        float value() const {
-            return normal;
-        }
-    };
-}
-
-#include <ostream>
-inline
-std::ostream & operator << (std::ostream& stream, const x::probability& probability){
-    return stream << probability.value();
-}
-
-            
-#endif /* x_probability_hpp */
-//
-//  x_process.hpp
-//  x
-//
-//  Created by Daher Alfawares on 8/29/17.
-//  Copyright © 2017 Daher Alfawares. All rights reserved.
-//
-
-#ifndef x_process_hpp
-#define x_process_hpp
-
-#include <string>
-#include <sstream>
-#include <vector>
-
-namespace x {
-    class process {
-        std::string process_name;
-    public:
-        process(std::string process):process_name(process) {}
-        std::string  run(const std::string& args) const;
-        std::string output();
-    private:
-        std::stringstream out;
-    };
-}
-
-#endif /* x_process_hpp */
-//
-//  x_shell.hpp
-//  x
-//
-//  Created by Daher Alfawares on 12/13/17.
-//  Copyright © 2017 Daher Alfawares. All rights reserved.
-//
-
-#ifndef x_shell_hpp
-#define x_shell_hpp
-
-#include <string>
-#include <iostream>
-#include <sstream>
-
-namespace x {
-    namespace shell {
-        
-        using std::string;
-        
-        inline string remove(string file){
-            std::stringstream command;
-            command
-            << "rm "
-            << "-f "
-            << "-r "
-            << "-v "
-            << "\"" << file << "\" ";
-            return command.str();
-        }
-        inline string mkdir(string dir){
-            std::stringstream command;
-            command
-            << "mkdir "
-            << "\"" << dir << "\" ";
-            return command.str();
-        }
-        inline string copy(string src, string dst){
-            std::stringstream command;
-            command
-            << "cp "    // copy
-            << "-f "    // force
-            << "-r "    // recursive
-            << "-v "    // verbose
-            << "\"" << src << "\" "
-            << "\"" << dst << "\" ";
-            
-          //  std::cout << command.str() << std::endl;
-            return command.str();
-        }
-        
-        inline string diff(string src, string dst){
-            std::stringstream command;
-            command
-            << "diff " // diff
-            << "-q "   // quiet
-            << "\"" << src << "\" "
-            << "\"" << dst << "\" ";
-          //  std::cout << command.str() << std::endl;
-            return command.str();
-        }
-        inline string move(string src, string dst){
-            std::stringstream command;
-            command
-            << "mv "
-            << "-f "
-            << "-v "
-            << "\"" << src << "\" "
-            << "\"" << dst << "\" ";
-            return command.str();
-           // std::cout << command.str() << std::endl;
-        }
-    }
-}
-
-#endif /* x_shell_hpp */
-//
-//  x_sort.hpp
-//  x
-//
-//  Created by Daher Alfawares on 2/3/18.
-//  Copyright © 2018 Daher Alfawares. All rights reserved.
-//
-
-#ifndef x_sort_hpp
-#define x_sort_hpp
-
-namespace x { namespace sort {
-    
-    template<typename functor>
-    struct by
-    {
-        functor f;
-        template<class T>
-        bool operator()(T const &a, T const &b) const {
-            return f(a) > f(b);
-        }
-    };
-    
-}}
-
-#endif /* x_sort_hpp */
-//
-//  stdlib.hpp
-//  x
-//
-//  Created by Daher Alfawares on 1/26/18.
-//  Copyright © 2018 Daher Alfawares. All rights reserved.
-//
-
-#ifndef x_stdlib_hpp
-#define x_stdlib_hpp
-
-#include <cstdlib>
-
-namespace x {
-
-    template<typename T> T abs(const T& t){
-        return t < 0 ? -t : t;
-    }
-    
-    template<typename T> T rand(){
-        return std::rand() / static_cast<T>(RAND_MAX);
-    }
-    
-}
-
-#endif /* x_stdlib_hpp */
-
 //C++
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
@@ -745,6 +409,426 @@ namespace x
 } /* ascii */
 
 #endif
+
+//
+//  x_options.hpp
+//  x
+//
+//  Created by Daher Alfawares on 8/28/17.
+//  Copyright © 2017 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_options_hpp
+#define x_options_hpp
+
+/* : Example :
+ #include <iostream>
+ #include "xg.hpp"
+ namespace arg {
+     std::string help = "-help";
+      std::string name = "-name";
+      std::string x = "-x";
+ }
+ int main(int argc, const char * argv[]) {
+      auto arguments = x::options(argc,argv);
+      arguments.map_to({
+           {arg::help,    x::option("produces the usage of this tool.")},
+           {arg::name,    x::option("takes your first and last names.")}
+      });
+      if(arguments[arg::help]){
+           std::cout << arguments.print() << std::endl;
+      }
+      if(arguments[arg::name]){
+           std::cout<< arguments[arg::name].value() << std::endl;
+      }
+      return 0;
+ }
+ */
+
+#include <string>
+#include <vector>
+#include <map>
+#include <string>
+#include <iostream>
+#include <sstream>
+
+namespace x {
+    
+    class option {
+    public:
+        typedef std::string             string;
+        typedef std::vector<string>     vector;
+        typedef std::map<string,option> map;
+        
+    public:
+        option(string description){
+            option_description = description;
+            option_is_enabled  = false;
+        }
+        void operator +=(const string& value){
+            this->option_values.push_back(value);
+        }
+        const vector values() const { return this->option_values; }
+        const string value() const {
+            if(this->option_values.size()>0)
+                return this->option_values[0];
+            else
+                return string();
+        }
+        void enable(){ option_is_enabled = true; }
+        bool enabled(){ return option_is_enabled; }
+        std::string description(){ return option_description; }
+        operator bool () { return enabled(); }
+        
+    private:
+        string option_description;
+        vector option_values;
+        bool   option_is_enabled;
+    };
+    
+    class options {
+    public:
+        option::map     map;
+        option::vector  arguments;
+        options(int argc, const char * argv[])
+            {
+            for(int i=1; i< argc; i++)
+                this->arguments.push_back(argv[i]);
+            }
+        void map_to(option::map option_map){
+            this->map = option_map;
+            option::map::iterator option_iterator = map.end();
+            for(auto argument : this->arguments){
+                // what is it?
+                if(argument[0] == '-'){
+                    // then it's an option.
+                    // find it in the map.
+                    option_iterator = this->map.find(argument);
+                    if( option_iterator == this->map.end()){
+                        std::cout << "Invalid switch: " << argument << std::endl;
+                        continue;
+                    }
+                    auto option_name      = option_iterator->first;
+                    option& option_object = option_iterator->second;
+                    option_object.enable();
+                } else {
+                    if(option_iterator==map.end()){
+                        std::cout << "Ignoring " << argument << std::endl;
+                        continue;
+                    }
+                    // it's a value
+                    auto option_name      = option_iterator->first;
+                    option& option_object = option_iterator->second;
+                    option_object += argument;
+                }
+            }
+        }
+        std::string print(){
+            std::stringstream stream;
+            x::table out("available options:");
+            out("switch")("description")++;
+            for(auto iter:map){
+                out(iter.first)(iter.second.description())++;
+            }
+            stream << "Usage: -[switch] value1 value2 ..." << std::endl;
+            stream << out;
+            return stream.str();
+        }
+        std::string print_values(){
+            std::stringstream stream;
+            x::table out("available options:");
+            out("switch")("value")++;
+            for(auto iter:map){
+                std::stringstream stream;
+                for(auto value:iter.second.values()) stream << "\"" << value << "\" ";
+                out(iter.first)(stream.str())++;
+            }
+            stream << out;
+            return stream.str();
+        }
+        
+        inline
+        option& operator[](option::string key){
+            auto iterator = map.find(key);
+            if(iterator != map.end()){
+                return iterator->second;
+            }
+            
+            throw -1; // You forgot to add a switch to the map.
+        }
+    };
+}
+
+#endif /* x_options_hpp */
+//
+//  x_parallel.hpp
+//  life
+//
+//  Created by Daher Alfawares on 1/26/18.
+//  Copyright © 2018 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_parallel_hpp
+#define x_parallel_hpp
+
+#include <vector>
+#include <thread>
+
+namespace x {
+    template<typename function>
+    class parallel {
+        typedef std::thread thread;
+        typedef std::vector<thread> vector;
+        vector threads;
+        
+        parallel(std::vector<function> functions){
+            for(auto f: functions){
+                threads.push_back(thread(f));
+            }
+        }
+        ~parallel(){
+            for(auto t: threads){
+                t.join();
+            }
+        }
+    };
+}
+
+
+#endif /* x_parallel_hpp */
+//
+//  x_probability.hpp
+//  x
+//
+//  Created by Daher Alfawares on 1/26/18.
+//  Copyright © 2018 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_probability_hpp
+#define x_probability_hpp
+
+#include <vector>
+
+namespace x {
+    class probability {
+        float normal;
+    public:
+        probability()
+        {
+            this->normal = 0;
+        }
+        probability(float normal)
+        {
+            this->normal = normal;
+        }
+        operator bool() const {
+            float random = std::rand() / static_cast<float>(RAND_MAX);
+            return random <= this->normal;
+        }
+        probability& operator = (float value){
+            normal = value;
+            return *this;
+        }
+        float value() const {
+            return normal;
+        }
+    };
+}
+
+#include <ostream>
+inline
+std::ostream & operator << (std::ostream& stream, const x::probability& probability){
+    return stream << probability.value();
+}
+
+            
+#endif /* x_probability_hpp */
+
+//
+//  x_process.hpp
+//  x
+//
+//  Created by Daher Alfawares on 8/29/17.
+//  Copyright © 2017 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_process_hpp
+#define x_process_hpp
+
+#include <string>
+#include <sstream>
+#include <vector>
+#include <array>
+
+namespace x {
+    class process {
+        std::string process_name;
+        public:
+        process(std::string process):process_name(process) {}
+        std::string run(const std::string& args) const{
+            static int count = 0;
+            std::string command = this->process_name+" "+args;
+            count ++;
+            std::array<char, 128> buffer;
+            std::string result;
+#ifdef _WIN32
+            FILE* pipe = _popen(command.c_str(), "r");
+#else
+            FILE* pipe = popen(command.c_str(), "r");
+#endif
+            if (!pipe)
+            {
+                std::cout << "Error popen("<< count << ") : "/* << strerror_s(errno) */ << std::endl;
+                return 0;
+            }
+            while (fgets(buffer.data(), 128, pipe) != NULL) {
+                result += buffer.data();
+            }
+            fclose(pipe);
+            return result;
+        }
+        std::string output(){
+            auto output = this->out.str();
+            output.erase(output.size()-1);
+            //output.erase(output.size()-1);
+            return output;
+        }
+        private:
+        std::stringstream out;
+    };
+}
+
+#endif /* x_process_hpp */
+//
+//  x_shell.hpp
+//  x
+//
+//  Created by Daher Alfawares on 12/13/17.
+//  Copyright © 2017 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_shell_hpp
+#define x_shell_hpp
+
+#include <string>
+#include <iostream>
+#include <sstream>
+
+namespace x {
+    namespace shell {
+        
+        using std::string;
+        
+        inline string remove(string file){
+            std::stringstream command;
+            command
+            << "rm "
+            << "-f "
+            << "-r "
+            << "-v "
+            << "\"" << file << "\" ";
+            return command.str();
+        }
+        inline string mkdir(string dir){
+            std::stringstream command;
+            command
+            << "mkdir "
+            << "\"" << dir << "\" ";
+            return command.str();
+        }
+        inline string copy(string src, string dst){
+            std::stringstream command;
+            command
+            << "cp "    // copy
+            << "-f "    // force
+            << "-r "    // recursive
+            << "-v "    // verbose
+            << "\"" << src << "\" "
+            << "\"" << dst << "\" ";
+            
+          //  std::cout << command.str() << std::endl;
+            return command.str();
+        }
+        
+        inline string diff(string src, string dst){
+            std::stringstream command;
+            command
+            << "diff " // diff
+            << "-q "   // quiet
+            << "\"" << src << "\" "
+            << "\"" << dst << "\" ";
+          //  std::cout << command.str() << std::endl;
+            return command.str();
+        }
+        inline string move(string src, string dst){
+            std::stringstream command;
+            command
+            << "mv "
+            << "-f "
+            << "-v "
+            << "\"" << src << "\" "
+            << "\"" << dst << "\" ";
+            return command.str();
+           // std::cout << command.str() << std::endl;
+        }
+    }
+}
+
+#endif /* x_shell_hpp */
+//
+//  x_sort.hpp
+//  x
+//
+//  Created by Daher Alfawares on 2/3/18.
+//  Copyright © 2018 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_sort_hpp
+#define x_sort_hpp
+
+namespace x { namespace sort {
+    
+    template<typename functor>
+    struct by
+    {
+        functor f;
+        template<class T>
+        bool operator()(T const &a, T const &b) const {
+            return f(a) > f(b);
+        }
+    };
+    
+}}
+
+#endif /* x_sort_hpp */
+//
+//  stdlib.hpp
+//  x
+//
+//  Created by Daher Alfawares on 1/26/18.
+//  Copyright © 2018 Daher Alfawares. All rights reserved.
+//
+
+#ifndef x_stdlib_hpp
+#define x_stdlib_hpp
+
+#include <cstdlib>
+
+namespace x {
+
+    template<typename T> T abs(const T& t){
+        return t < 0 ? -t : t;
+    }
+    
+    template<typename T> T rand(){
+        return std::rand() / static_cast<T>(RAND_MAX);
+    }
+    
+}
+
+#endif /* x_stdlib_hpp */
+
+
 //
 //  x_test_probability.hpp
 //  x
